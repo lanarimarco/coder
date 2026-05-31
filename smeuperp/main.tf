@@ -90,6 +90,22 @@ resource "coder_agent" "main" {
       fi
     done
 
+    # Create VS Code multi-root workspace file
+    WORKSPACE_FILE="$HOME/smeuperp/smeuperp.code-workspace"
+    if [ ! -f "$WORKSPACE_FILE" ]; then
+      cat > "$WORKSPACE_FILE" <<'WORKSPACE'
+{
+    "folders": [
+        { "path": "libs/kokos-dsl-smeuperp" },
+        { "path": "libs/kokos-dsl-smeuperp-custom" },
+        { "path": "libs/kokos-dsl-smeuperp-persup" },
+        { "path": "libs/kokos-dsl-smeuperp-smeupdem" }
+    ],
+    "settings": {}
+}
+WORKSPACE
+    fi
+
     # Start code-server
     /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
   EOT
@@ -123,7 +139,7 @@ resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
   slug         = "code-server"
   display_name = "code-server"
-  url          = "http://localhost:13337/?folder=/home/${local.username}/smeuperp"
+  url          = "http://localhost:13337/?workspace=/home/${local.username}/smeuperp/smeuperp.code-workspace"
   icon         = "/icon/code.svg"
   subdomain    = false
   share        = "owner"
