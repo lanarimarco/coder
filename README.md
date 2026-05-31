@@ -11,7 +11,6 @@ smeuperp/                # Workspace template for smeuperp developers
   main.tf                # Terraform template
   build/
     Dockerfile
-    extensions/          # Place .vsix files here to bundle into the image
 ```
 
 ## Server setup
@@ -154,15 +153,10 @@ coder template push smeuperp --directory smeuperp/
 | `JARDIS_HOST` / `JARDIS_PORT` in `.env` | No — destroy and recreate |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
-| Docker image changes (`build/`) | Yes (image is rebuilt on next start) |
 
 ### Updating the jardis extension
 
 Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `smeuperp/main.tf`, then push the template. Existing workspaces pick up the new version on next start.
-
-### Bundling other extensions
-
-Drop `.vsix` files into `smeuperp/build/extensions/` and push the template. They are baked into the Docker image and installed on workspace start. The image is only rebuilt when the contents of `build/` change.
 
 ### Repos cloned into workspaces
 
