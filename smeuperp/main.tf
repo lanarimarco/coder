@@ -23,6 +23,14 @@ data "coder_workspace" "me" {}
 
 data "coder_workspace_owner" "me" {}
 
+data "coder_parameter" "github_token" {
+  name         = "github_token"
+  display_name = "GitHub Personal Access Token"
+  description  = "PAT with read access to the smeup private repos. Used to clone repos and download extensions. Update this when the token expires."
+  type         = "string"
+  mutable      = true
+}
+
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
@@ -33,20 +41,57 @@ resource "coder_agent" "main" {
     # Install code-server
     curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
 
-    # Install vsix extensions — only when the bundle hash changes
-    EXTENSIONS_DIR="/opt/coder-extensions"
-    HASH_FILE="$HOME/.coder-extensions-hash"
-    CURRENT_HASH=$(find "$EXTENSIONS_DIR" -type f -name "*.vsix" | sort | xargs sha256sum 2>/dev/null | sha256sum | awk '{print $1}')
+    GH_TOKEN="${data.coder_parameter.github_token.value}"
 
-    if [ ! -f "$HASH_FILE" ] || [ "$(cat $HASH_FILE)" != "$CURRENT_HASH" ]; then
-      echo "Installing/updating extensions..."
-      for vsix in "$EXTENSIONS_DIR"/*.vsix; do
-        [ -f "$vsix" ] && /tmp/code-server/bin/code-server --install-extension "$vsix"
-      done
-      echo "$CURRENT_HASH" > "$HASH_FILE"
+    # Configure git credential store so all git operations in code-server work without re-authentication
+    git config --global credential.helper store
+    echo "https://$GH_TOKEN@github.com" > "$HOME/.git-credentials"
+    chmod 600 "$HOME/.git-credentials"
+
+    # Download and install jardis extension — only when version changes
+    # Uses the GitHub API (not browser URL) which correctly handles private release assets
+    JARDIS_VERSION="v2.0.0"
+    JARDIS_VSIX="jardis-client-v2.0.0.vsix"
+    JARDIS_VERSION_FILE="$HOME/.coder-jardis-vsix-version"
+
+    if [ -n "$GH_TOKEN" ] && { [ ! -f "$JARDIS_VERSION_FILE" ] || [ "$(cat $JARDIS_VERSION_FILE)" != "$JARDIS_VERSION" ]; }; then
+      echo "Downloading jardis extension $JARDIS_VERSION..."
+      ASSET_URL=$(curl -fsSL \
+        -H "Authorization: token $GH_TOKEN" \
+        "https://api.github.com/repos/smeup/jardis/releases/tags/$JARDIS_VERSION" | \
+        python3 -c "import sys,json; d=json.load(sys.stdin); print(next(a['url'] for a in d['assets'] if a['name']=='$JARDIS_VSIX'))")
+      curl -fsSL \
+        -H "Authorization: token $GH_TOKEN" \
+        -H "Accept: application/octet-stream" \
+        "$ASSET_URL" -o /tmp/jardis-client.vsix
+      /tmp/code-server/bin/code-server --install-extension /tmp/jardis-client.vsix
+      rm /tmp/jardis-client.vsix
+      echo "$JARDIS_VERSION" > "$JARDIS_VERSION_FILE"
     else
-      echo "Extensions up to date, skipping install."
+      echo "jardis extension up to date, skipping."
     fi
+
+    # Clone smeup libs — only on first start, preserves user changes on restarts
+    # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
+    # then immediately stripped from the remote so it never persists in .git/config
+    LIBS_DIR="$HOME/libs"
+    REPOS=(
+      "kokos-dsl-smeuperp"
+      "kokos-dsl-smeuperp-custom"
+      "kokos-dsl-smeuperp-persup"
+      "kokos-dsl-smeuperp-smeupdem"
+    )
+    mkdir -p "$LIBS_DIR"
+    for NAME in "$${REPOS[@]}"; do
+      DEST="$LIBS_DIR/$NAME"
+      if [ ! -d "$DEST/.git" ]; then
+        echo "Cloning $NAME..."
+        git clone "https://$GH_TOKEN@github.com/smeup/$NAME" "$DEST"
+        git -C "$DEST" remote set-url origin "https://github.com/smeup/$NAME"
+      else
+        echo "$NAME already cloned, skipping."
+      fi
+    done
 
     # Start code-server
     /tmp/code-server/bin/code-server --auth none --port 13337 >/tmp/code-server.log 2>&1 &
@@ -100,7 +145,7 @@ resource "docker_volume" "home_volume" {
 }
 
 resource "docker_image" "main" {
-  name = "coder-smeup-grain-${data.coder_workspace.me.id}"
+  name = "coder-smeuperp-${data.coder_workspace.me.id}"
   build {
     context = "./build"
     build_args = {

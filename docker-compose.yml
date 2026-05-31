@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   coder:
-    image: ghcr.io/coder/coder:v2.10.1 # Use the latest stable v2 version
+    image: ghcr.io/coder/coder:v2.21.0
     container_name: coder
     user: "0"  # run as root so the provisioner can access the Docker socket
     ports:
