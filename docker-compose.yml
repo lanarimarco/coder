@@ -40,21 +40,6 @@ services:
       - coder-db
     restart: unless-stopped
 
-  # Example: external app that shares the libs volume of a smeuperp workspace.
-  # The volume name follows the pattern: coder-smeuperp-libs-<coder-username>
-  # Uncomment and adapt to your actual app image and username.
-  #
-  # myapp:
-  #   image: myapp:latest
-  #   volumes:
-  #     - coder-smeuperp-libs-<username>:/workspace/libs:ro
-  #   restart: unless-stopped
 
 volumes:
   coder_db_data:
-  # Declare each user's libs volume as external so docker-compose can reference it.
-  # The volume is created and managed by the Coder workspace template.
-  # Add one entry per user following this pattern:
-  #
-  # coder-smeuperp-libs-<username>:
-  #   external: true

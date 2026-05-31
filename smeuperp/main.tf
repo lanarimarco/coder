@@ -67,11 +67,13 @@ resource "coder_agent" "main" {
       echo "jardis extension up to date, skipping."
     fi
 
-    # Clone smeup libs — only on first start, preserves user changes on restarts
+    # Clone smeup libs into the shared volume under a per-user subdirectory.
+    # /opt/smeuperp-libs is shared across all workspaces; each user owns their subfolder.
+    # ~/smeuperp/libs is a symlink into that subfolder so code-server sees the usual path.
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
     mkdir -p "$HOME/smeuperp"
-    LIBS_DIR="$HOME/smeuperp/libs"
+    LIBS_DIR="/opt/smeuperp-libs/$USER"
     REPOS=(
       "kokos-dsl-smeuperp"
       "kokos-dsl-smeuperp-custom"
@@ -79,6 +81,7 @@ resource "coder_agent" "main" {
       "kokos-dsl-smeuperp-smeupdem"
     )
     mkdir -p "$LIBS_DIR"
+    ln -sfn "$LIBS_DIR" "$HOME/smeuperp/libs"
     for NAME in "$${REPOS[@]}"; do
       DEST="$LIBS_DIR/$NAME"
       if [ ! -d "$DEST/.git" ]; then
@@ -158,12 +161,6 @@ resource "docker_volume" "home_volume" {
   }
 }
 
-resource "docker_volume" "libs_volume" {
-  name = "coder-smeuperp-libs-${local.username}"
-  lifecycle {
-    ignore_changes = all
-  }
-}
 
 resource "docker_image" "main" {
   name = "coder-smeuperp-${data.coder_workspace.me.id}"
@@ -198,8 +195,8 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
   volumes {
-    container_path = "/home/${local.username}/smeuperp/libs"
-    volume_name    = docker_volume.libs_volume.name
+    container_path = "/opt/smeuperp-libs"
+    host_path      = "/opt/smeuperp-libs"
     read_only      = false
   }
 }
