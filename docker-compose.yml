@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  coder-db:
+    image: postgres:16-alpine
+    container_name: coder-db
+    environment:
+      POSTGRES_USER: coder
+      POSTGRES_PASSWORD: coder_password_change_me
+      POSTGRES_DB: coder
+    volumes:
+      - coder_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  coder:
+    image: ghcr.io/coder/coder:v2.10.1 # Use the latest stable v2 version
+    container_name: coder
+    user: "0"  # run as root so the provisioner can access the Docker socket
+    ports:
+      - "7080:7080"
+    environment:
+      CODER_HTTP_ADDRESS: "0.0.0.0:7080"
+      # Tell Coder how to connect to the DB container
+      CODER_PG_CONNECTION_URL: "postgres://coder:coder_password_change_me@coder-db:5432/coder?sslmode=disable"
+      # Crucial: This tells Coder's internal templates where to find the host server
+      CODER_ACCESS_URL: "http://localhost:7080" 
+    volumes:
+      # CRITICAL: This gives the Coder container permission to talk to the host's Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - coder-db
+    restart: unless-stopped
+
+volumes:
+  coder_db_data:
