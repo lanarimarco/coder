@@ -20,10 +20,19 @@ services:
       - "7080:7080"
     environment:
       CODER_HTTP_ADDRESS: "0.0.0.0:7080"
-      # Tell Coder how to connect to the DB container
       CODER_PG_CONNECTION_URL: "postgres://coder:coder_password_change_me@coder-db:5432/coder?sslmode=disable"
-      # Crucial: This tells Coder's internal templates where to find the host server
-      CODER_ACCESS_URL: "http://localhost:7080" 
+      CODER_ACCESS_URL: "http://localhost:7080"
+      # GitHub OAuth2 — enables "Sign in with GitHub" on the login page
+      CODER_OAUTH2_GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID}"
+      CODER_OAUTH2_GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET}"
+      CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS: "true"
+      CODER_OAUTH2_GITHUB_ALLOW_EVERYONE: "true"
+      # GitHub external auth — used by workspace templates via coder_external_auth
+      CODER_EXTERNAL_AUTH_0_ID: "github"
+      CODER_EXTERNAL_AUTH_0_TYPE: "github"
+      CODER_EXTERNAL_AUTH_0_CLIENT_ID: "${GITHUB_EXTERNAL_AUTH_CLIENT_ID}"
+      CODER_EXTERNAL_AUTH_0_CLIENT_SECRET: "${GITHUB_EXTERNAL_AUTH_CLIENT_SECRET}"
+      CODER_EXTERNAL_AUTH_0_SCOPES: "repo read:user user:email"
     volumes:
       # CRITICAL: This gives the Coder container permission to talk to the host's Docker
       - /var/run/docker.sock:/var/run/docker.sock

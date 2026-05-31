@@ -23,12 +23,8 @@ data "coder_workspace" "me" {}
 
 data "coder_workspace_owner" "me" {}
 
-data "coder_parameter" "github_token" {
-  name         = "github_token"
-  display_name = "GitHub Personal Access Token"
-  description  = "PAT with read access to the smeup private repos. Used to clone repos and download extensions. Update this when the token expires."
-  type         = "string"
-  mutable      = true
+data "coder_external_auth" "github" {
+  id = "github"
 }
 
 resource "coder_agent" "main" {
@@ -41,7 +37,7 @@ resource "coder_agent" "main" {
     # Install code-server
     curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server
 
-    GH_TOKEN="${data.coder_parameter.github_token.value}"
+    GH_TOKEN="$GITHUB_TOKEN"
 
     # Configure git credential store so all git operations in code-server work without re-authentication
     git config --global credential.helper store
@@ -102,6 +98,7 @@ resource "coder_agent" "main" {
     GIT_AUTHOR_EMAIL    = data.coder_workspace_owner.me.email
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
+    GITHUB_TOKEN        = data.coder_external_auth.github.access_token
   }
 
   metadata {
