@@ -158,6 +158,13 @@ resource "docker_volume" "home_volume" {
   }
 }
 
+resource "docker_volume" "libs_volume" {
+  name = "coder-smeuperp-libs-${local.username}"
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
 resource "docker_image" "main" {
   name = "coder-smeuperp-${data.coder_workspace.me.id}"
   build {
@@ -188,6 +195,11 @@ resource "docker_container" "workspace" {
   volumes {
     container_path = "/home/${local.username}"
     volume_name    = docker_volume.home_volume.name
+    read_only      = false
+  }
+  volumes {
+    container_path = "/home/${local.username}/smeuperp/libs"
+    volume_name    = docker_volume.libs_volume.name
     read_only      = false
   }
 }
