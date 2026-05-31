@@ -33,6 +33,9 @@ services:
       CODER_EXTERNAL_AUTH_0_CLIENT_ID: "${GITHUB_EXTERNAL_AUTH_CLIENT_ID}"
       CODER_EXTERNAL_AUTH_0_CLIENT_SECRET: "${GITHUB_EXTERNAL_AUTH_CLIENT_SECRET}"
       CODER_EXTERNAL_AUTH_0_SCOPES: "repo read:user user:email"
+      # Terraform variables passed to all workspace templates
+      TF_VAR_target_host: "${TARGET_HOST}"
+      TF_VAR_target_port: "${TARGET_PORT}"
     volumes:
       # CRITICAL: This gives the Coder container permission to talk to the host's Docker
       - /var/run/docker.sock:/var/run/docker.sock

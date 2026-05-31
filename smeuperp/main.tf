@@ -27,6 +27,18 @@ data "coder_external_auth" "github" {
   id = "github"
 }
 
+variable "target_host" {
+  type        = string
+  description = "Hostname or IP of the service workspaces connect to. Set via TF_VAR_target_host in the server environment."
+  default     = ""
+}
+
+variable "target_port" {
+  type        = number
+  description = "Port of the target service. Set via TF_VAR_target_port in the server environment."
+  default     = 0
+}
+
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
@@ -119,6 +131,8 @@ WORKSPACE
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
     GITHUB_TOKEN        = data.coder_external_auth.github.access_token
+    TARGET_HOST         = var.target_host
+    TARGET_PORT         = var.target_port
   }
 
   metadata {
