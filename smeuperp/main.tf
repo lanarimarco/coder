@@ -108,7 +108,7 @@ resource "coder_agent" "main" {
     # Create VS Code multi-root workspace file
     WORKSPACE_FILE="$HOME/smeuperp/smeuperp.code-workspace"
     if [ ! -f "$WORKSPACE_FILE" ]; then
-      cat > "$WORKSPACE_FILE" <<'WORKSPACE'
+      cat > "$WORKSPACE_FILE" <<WORKSPACE
 {
     "folders": [
         { "path": "libs/kokos-dsl-smeuperp" },
@@ -116,7 +116,12 @@ resource "coder_agent" "main" {
         { "path": "libs/kokos-dsl-smeuperp-persup" },
         { "path": "libs/kokos-dsl-smeuperp-smeupdem" }
     ],
-    "settings": {}
+    "settings": {
+        "jardis.user": "$USER",
+        "jardis.host": "$JARDIS_HOST",
+        "jardis.port": $JARDIS_PORT,
+        "jardis.env": "smeuperp"
+    }
 }
 WORKSPACE
     fi
