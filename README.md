@@ -16,7 +16,21 @@ smeuperp/                # Workspace template for smeuperp developers
 
 ## Server setup
 
-### 1. Configure secrets
+### 1. Prepare the host
+
+Create the shared libs directory on the host. This is where the repos cloned inside workspaces will be stored and made accessible to other processes on the host or in other containers.
+
+```bash
+sudo mkdir -p /opt/smeuperp-libs
+sudo chmod 777 /opt/smeuperp-libs
+```
+
+> **macOS / Docker Desktop only:** Docker Desktop restricts which host paths can be bind-mounted into containers. Add `/opt/smeuperp-libs` to the allowed list before starting workspaces:
+> **Docker Desktop → Settings → Resources → File Sharing → add `/opt/smeuperp-libs` → Apply & Restart**
+>
+> On Linux this restriction does not exist.
+
+### 2. Configure secrets
 
 ```bash
 cp .env.template .env
@@ -24,7 +38,7 @@ cp .env.template .env
 
 Fill in `.env` with the two GitHub OAuth App credentials (see [GitHub OAuth Apps](#github-oauth-apps) below).
 
-### 2. Start the stack
+### 3. Start the stack
 
 ```bash
 docker compose up -d
@@ -32,9 +46,49 @@ docker compose up -d
 
 Coder is available at `http://localhost:7080`.
 
-### 3. Create the first admin user
+### 4. Create the first admin user
 
 Open `http://localhost:7080` and complete the initial setup wizard.
+
+---
+
+## How workspace files are exposed to other processes
+
+This is a key aspect of the setup.
+
+### What lives where
+
+| Path | Visible to | Persists across workspace destroy? |
+|------|-----------|-----------------------------------|
+| `~/` (home volume) | workspace only | No |
+| `~/smeuperp/libs` | workspace, host, other containers | Yes |
+
+### `~/smeuperp/libs` — the shared libs directory
+
+When a workspace starts, the repos are cloned into `/opt/smeuperp-libs/<username>/` on the **host filesystem** and `~/smeuperp/libs` inside the workspace is a symlink pointing there.
+
+This means:
+- **From the host**: files are directly readable at `/opt/smeuperp-libs/<username>/`
+- **From another container**: mount `/opt/smeuperp-libs` as a bind mount — all users' repos are available under their respective subdirectories
+- **Survives workspace destruction**: because the files live on the host, not in the home Docker volume. Recreating the workspace will skip cloning since the repos are already there.
+
+### Mounting libs in an external container
+
+In any `docker-compose.yml` that needs to read the libs:
+
+```yaml
+services:
+  myapp:
+    image: myapp:latest
+    volumes:
+      - /opt/smeuperp-libs:/smeuperp-libs:ro
+```
+
+Each user's repos are then available at `/smeuperp-libs/<coder-username>/kokos-dsl-smeuperp` etc.
+
+### `~/` — the private home volume
+
+Everything else in the user's home directory (shell history, editor config, uncommitted files) lives in a Docker named volume private to that workspace. It is **not** accessible from the host or other containers, and is **deleted when the workspace is destroyed**.
 
 ---
 
@@ -79,7 +133,7 @@ Drop `.vsix` files into `smeuperp/build/extensions/` and push the template. They
 
 ### Repos cloned into workspaces
 
-On first start, the following private repos are cloned into `~/smeuperp/libs/`:
+On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `/opt/smeuperp-libs/<username>/` on the host):
 
 ```
 kokos-dsl-smeuperp
