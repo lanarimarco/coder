@@ -79,13 +79,13 @@ resource "coder_agent" "main" {
       echo "jardis extension up to date, skipping."
     fi
 
-    # Clone smeup libs into the shared volume under a per-user subdirectory.
-    # /opt/smeuperp-libs is shared across all workspaces; each user owns their subfolder.
-    # ~/smeuperp/libs is a symlink into that subfolder so code-server sees the usual path.
+    # Clone smeup libs into the user-scoped bind mount at /opt/smeuperp-libs.
+    # On the host this maps to /opt/smeuperp-libs/<username> — other users' dirs are not visible.
+    # ~/smeuperp/libs is a symlink so code-server sees the usual path.
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
     mkdir -p "$HOME/smeuperp"
-    LIBS_DIR="/opt/smeuperp-libs/$USER"
+    LIBS_DIR="/opt/smeuperp-libs"
     REPOS=(
       "kokos-dsl-smeuperp"
       "kokos-dsl-smeuperp-custom"
@@ -215,7 +215,7 @@ resource "docker_container" "workspace" {
   }
   volumes {
     container_path = "/opt/smeuperp-libs"
-    host_path      = "/opt/smeuperp-libs"
+    host_path      = "/opt/smeuperp-libs/${local.username}"
     read_only      = false
   }
 }
