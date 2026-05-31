@@ -9,7 +9,7 @@ Coder workspace for SMEUP ERP development — code-server (VS Code in the browse
 When you create a workspace for the first time:
 
 1. A Docker image is built from the template (takes a few minutes).
-2. A **persistent home volume** is created and mounted at `~` — this is where all your files live.
+2. A **persistent home volume** is created and mounted at `~` — this is where your personal files live.
 3. The **jardis** extension is downloaded from the private `smeup/jardis` release and installed into code-server.
 4. The following repos are cloned into `~/smeuperp/libs/`:
    ```
@@ -18,14 +18,15 @@ When you create a workspace for the first time:
    kokos-dsl-smeuperp-persup
    kokos-dsl-smeuperp-smeupdem
    ```
-5. code-server starts and opens `~/smeuperp/` as the working folder.
+5. A `smeuperp.code-workspace` file is created in `~/smeuperp/` with the jardis extension settings pre-configured (host, port, user, env).
+6. code-server starts and opens `~/smeuperp/smeuperp.code-workspace` as a multi-root workspace.
 
 ### Stop → Start
 
-Stopping a workspace shuts down the container but **preserves the home volume**. On next start:
+Stopping a workspace shuts down the container but **preserves all your files**. On next start:
 
-- Your files, git history, and any local changes are exactly as you left them.
-- Repos are not re-cloned (the `~/libs/` directories already exist).
+- Your home directory, git history, and local changes are exactly as you left them.
+- Repos are not re-cloned (they are already in `~/smeuperp/libs/`).
 - The jardis extension is not reinstalled unless the version has been updated by the template admin.
 
 **Always stop rather than delete your workspace when you are done for the day.**
@@ -34,13 +35,17 @@ Stopping a workspace shuts down the container but **preserves the home volume**.
 
 > ⚠️ **Destroying a workspace permanently deletes your home volume.**
 
-Everything stored in `~` is lost, including:
+The following are **lost**:
 
 - Uncommitted changes in any repo
-- Files you created or downloaded in the home directory
+- Files you created outside of `~/smeuperp/libs/`
 - Shell history, editor settings, and any local configuration
 
-Before destroying, make sure to **commit and push** all work you want to keep.
+The following **survive** destruction because they live on the host filesystem:
+
+- The cloned repos in `~/smeuperp/libs/` — recreating the workspace will find them already there and skip cloning
+
+Before destroying, make sure to **commit and push** any work you want to keep.
 
 ### Template updates
 
@@ -49,6 +54,23 @@ When the template admin pushes a new version, your workspace shows an **Update**
 - Rebuilds the Docker image if `build/` changed (e.g. a new bundled extension).
 - **Does not delete your home volume** — your files and repos are preserved.
 - Restarts the workspace so the new image takes effect.
+
+> Some template changes (e.g. Jardis host/port) require destroying and recreating the workspace — the admin will inform you when this is the case.
+
+## Jardis extension settings
+
+The `smeuperp.code-workspace` file is generated on first start with your connection settings already filled in:
+
+```json
+"settings": {
+    "jardis.user": "<your-coder-username>",
+    "jardis.host": "<configured-by-admin>",
+    "jardis.port": <configured-by-admin>,
+    "jardis.env": "smeuperp"
+}
+```
+
+These values come from the server configuration — you do not need to set them manually.
 
 ## GitHub authentication
 
