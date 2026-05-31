@@ -27,15 +27,15 @@ data "coder_external_auth" "github" {
   id = "github"
 }
 
-variable "target_host" {
+variable "jardis_host" {
   type        = string
-  description = "Hostname or IP of the service workspaces connect to. Set via TF_VAR_target_host in the server environment."
+  description = "Hostname or IP of the Jardis service workspaces connect to. Set via TF_VAR_jardis_host in the server environment."
   default     = ""
 }
 
-variable "target_port" {
+variable "jardis_port" {
   type        = number
-  description = "Port of the target service. Set via TF_VAR_target_port in the server environment."
+  description = "Port of the Jardis service. Set via TF_VAR_jardis_port in the server environment."
   default     = 0
 }
 
@@ -131,8 +131,8 @@ WORKSPACE
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
     GITHUB_TOKEN        = data.coder_external_auth.github.access_token
-    TARGET_HOST         = var.target_host
-    TARGET_PORT         = var.target_port
+    JARDIS_HOST         = var.jardis_host
+    JARDIS_PORT         = var.jardis_port
   }
 
   metadata {
