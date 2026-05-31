@@ -79,7 +79,7 @@ Drop `.vsix` files into `smeuperp/build/extensions/` and push the template. They
 
 ### Repos cloned into workspaces
 
-On first start, the following private repos are cloned into `~/libs/`:
+On first start, the following private repos are cloned into `~/smeuperp/libs/`:
 
 ```
 kokos-dsl-smeuperp

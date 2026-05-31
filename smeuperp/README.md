@@ -11,14 +11,14 @@ When you create a workspace for the first time:
 1. A Docker image is built from the template (takes a few minutes).
 2. A **persistent home volume** is created and mounted at `~` — this is where all your files live.
 3. The **jardis** extension is downloaded from the private `smeup/jardis` release and installed into code-server.
-4. The following repos are cloned into `~/libs/`:
+4. The following repos are cloned into `~/smeuperp/libs/`:
    ```
    kokos-dsl-smeuperp
    kokos-dsl-smeuperp-custom
    kokos-dsl-smeuperp-persup
    kokos-dsl-smeuperp-smeupdem
    ```
-5. code-server starts and the browser opens your workspace.
+5. code-server starts and opens `~/smeuperp/` as the working folder.
 
 ### Stop → Start
 

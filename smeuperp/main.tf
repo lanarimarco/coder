@@ -70,7 +70,8 @@ resource "coder_agent" "main" {
     # Clone smeup libs — only on first start, preserves user changes on restarts
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
-    LIBS_DIR="$HOME/libs"
+    mkdir -p "$HOME/smeuperp"
+    LIBS_DIR="$HOME/smeuperp/libs"
     REPOS=(
       "kokos-dsl-smeuperp"
       "kokos-dsl-smeuperp-custom"
@@ -122,7 +123,7 @@ resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
   slug         = "code-server"
   display_name = "code-server"
-  url          = "http://localhost:13337/?folder=/home/${local.username}"
+  url          = "http://localhost:13337/?folder=/home/${local.username}/smeuperp"
   icon         = "/icon/code.svg"
   subdomain    = false
   share        = "owner"
