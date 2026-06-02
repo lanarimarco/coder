@@ -64,9 +64,9 @@ This is a key aspect of the setup.
 
 ### `~/smeuperp/libs` — the per-user libs directory
 
-When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/`). Inside the container, `$USERS_WORKSPACE_PATH` is bind-mounted to that user-specific subdirectory only — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH`.
+When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/libs/`). Inside the container, `$USERS_WORKSPACE_PATH` is bind-mounted to that user-specific libs subdirectory only — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH`.
 
-- **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/` (e.g. `/home/kokos/users-workspace/admin/`)
+- **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/libs/` (e.g. `/home/kokos/users-workspace/admin/libs/`)
 - **From an external container**: mount `$USERS_WORKSPACE_PATH` to access all users' repos, each under their own subdirectory
 - **Survives workspace destruction**: the files live on the host, not in the home Docker volume. Recreating the workspace skips cloning since the repos are already there
 
@@ -175,7 +175,7 @@ Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `smeuperp/main.tf`, then push the tem
 
 ### Repos cloned into workspaces
 
-On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `$USERS_WORKSPACE_PATH/<username>/` on the host):
+On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `$USERS_WORKSPACE_PATH/<username>/libs/` on the host):
 
 ```
 kokos-dsl-smeuperp

@@ -75,7 +75,7 @@ resource "coder_agent" "main" {
     fi
 
     # Clone smeup libs into the user-scoped bind mount.
-    # On the host this maps to $USERS_WORKSPACE_PATH/<username> — other users' dirs are not visible.
+    # On the host this maps to $USERS_WORKSPACE_PATH/<username>/libs — other users' dirs are not visible.
     # ~/smeuperp/libs is a symlink so code-server sees the usual path.
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
@@ -202,7 +202,7 @@ resource "null_resource" "jardis_config" {
   }
 
   provisioner "local-exec" {
-    command = "mkdir -p /opt/coder-workspaces/${local.username} && printf 'JARDIS_HOST=%s\\nJARDIS_PORT=%s\\n' \"$TF_VAR_jardis_host\" \"$TF_VAR_jardis_port\" > /opt/coder-workspaces/${local.username}/.jardis.env"
+    command = "mkdir -p /opt/coder-workspaces/${local.username}/libs && printf 'JARDIS_HOST=%s\\nJARDIS_PORT=%s\\n' \"$TF_VAR_jardis_host\" \"$TF_VAR_jardis_port\" > /opt/coder-workspaces/${local.username}/libs/.jardis.env"
   }
 }
 
@@ -227,7 +227,7 @@ resource "docker_container" "workspace" {
   }
   volumes {
     container_path = var.users_workspace_path
-    host_path      = "${var.users_workspace_path}/${local.username}"
+    host_path      = "${var.users_workspace_path}/${local.username}/libs"
     read_only      = false
   }
 }
