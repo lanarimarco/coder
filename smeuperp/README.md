@@ -18,8 +18,9 @@ When you create a workspace for the first time:
    kokos-dsl-smeuperp-persup
    kokos-dsl-smeuperp-smeupdem
    ```
-5. A `smeuperp.code-workspace` file is created in `~/smeuperp/` with the jardis extension settings pre-configured (host, port, user, env).
-6. code-server starts and opens `~/smeuperp/smeuperp.code-workspace` as a multi-root workspace.
+5. Jardis extension settings (`host`, `port`, `user`, `env`) are written to `~/.local/share/code-server/User/settings.json`.
+6. A `smeuperp.code-workspace` file is created in `~/smeuperp/` pointing to the four library repos.
+7. code-server starts and opens `~/smeuperp/smeuperp.code-workspace` as a multi-root workspace.
 
 ### Stop → Start
 
@@ -55,22 +56,22 @@ When the template admin pushes a new version, your workspace shows an **Update**
 - **Does not delete your home volume** — your files and repos are preserved.
 - Restarts the workspace so the new image takes effect.
 
-> Some template changes (e.g. Jardis host/port) require destroying and recreating the workspace — the admin will inform you when this is the case.
+> Jardis host/port changes take effect on the next workspace start — no need to destroy the workspace.
 
 ## Jardis extension settings
 
-The `smeuperp.code-workspace` file is generated on first start with your connection settings already filled in:
+On every workspace start, the following settings are injected into `~/.local/share/code-server/User/settings.json`:
 
 ```json
-"settings": {
+{
     "jardis.user": "<your-coder-username>",
     "jardis.host": "<configured-by-admin>",
-    "jardis.port": <configured-by-admin>,
+    "jardis.port": "<configured-by-admin>",
     "jardis.env": "smeuperp-user"
 }
 ```
 
-These values come from the server configuration — you do not need to set them manually.
+These values come from the server configuration — you do not need to set them manually. Because they are re-applied on every start, any admin change to `host` or `port` takes effect automatically on next restart.
 
 ## GitHub authentication
 
