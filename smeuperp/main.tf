@@ -15,6 +15,12 @@ locals {
   jardis_port          = 9091
   jardis_env           = "smeuperp-user"
   users_workspace_path = "/home/kokos/users-workspace"
+  repos = [
+    "kokos-dsl-smeuperp",
+    "kokos-dsl-smeuperp-custom",
+    "kokos-dsl-smeuperp-persup",
+    "kokos-dsl-smeuperp-smeupdem",
+  ]
 }
 
 data "coder_provisioner" "me" {}
@@ -91,10 +97,7 @@ resource "coder_agent" "main" {
     mkdir -p "$HOME/smeuperp"
     LIBS_DIR="$USERS_WORKSPACE_PATH/$USER/libs"
     REPOS=(
-      "kokos-dsl-smeuperp"
-      "kokos-dsl-smeuperp-custom"
-      "kokos-dsl-smeuperp-persup"
-      "kokos-dsl-smeuperp-smeupdem"
+      ${join("\n      ", [for r in local.repos : "\"${r}\""])}
     )
     mkdir -p "$LIBS_DIR"
     sudo chown "$(id -u):$(id -g)" "$LIBS_DIR"
@@ -143,10 +146,7 @@ PYSCRIPT
     cat > "$WORKSPACE_FILE" <<WORKSPACE
 {
     "folders": [
-        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp" },
-        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-custom" },
-        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-persup" },
-        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-smeupdem" }
+        ${join(",\n        ", [for r in local.repos : "{ \"path\": \"${local.users_workspace_path}/$USER/libs/${r}\" }"])}
     ]
 }
 WORKSPACE
