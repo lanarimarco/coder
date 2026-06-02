@@ -11,7 +11,7 @@ terraform {
 
 locals {
   username             = data.coder_workspace_owner.me.name
-  jardis_host          = "localhost"
+  jardis_host          = "172.31.29.119"
   jardis_port          = 9091
   jardis_env           = "smeuperp-user"
   users_workspace_path = "/home/kokos/users-workspace"
