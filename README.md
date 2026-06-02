@@ -92,7 +92,7 @@ Everything else (shell history, editor config, uncommitted files outside libs) l
 
 ## Jardis service configuration
 
-The Jardis host and port are written into the `smeuperp.code-workspace` VS Code settings automatically on first workspace start.
+The Jardis host, port, and environment are injected into the code-server user settings (`~/.local/share/code-server/User/settings.json`) on **every** workspace start, so they always reflect the current template values.
 
 Edit the values directly in the `locals` block of `smeuperp/main.tf`:
 
@@ -110,10 +110,10 @@ Then push the template:
 coder template push smeuperp --directory smeuperp/
 ```
 
-The values are baked into the startup script at provisioning time and written into `smeuperp.code-workspace` on first workspace start:
+On the next workspace start, the startup script merges these values into the user settings file:
 
 ```json
-"settings": {
+{
     "jardis.user": "<coder-username>",
     "jardis.host": "<jardis_host>",
     "jardis.port": <jardis_port>,
@@ -121,7 +121,7 @@ The values are baked into the startup script at provisioning time and written in
 }
 ```
 
-The workspace file is created once on first start and not overwritten on subsequent starts, so user edits are preserved. After changing the locals and pushing the template, destroy and recreate the workspace (or delete `~/smeuperp/smeuperp.code-workspace` manually and stop/start).
+Because settings are re-applied on every start, pushing the template and stopping/starting the workspace is enough to pick up new values.
 
 ---
 
@@ -173,7 +173,8 @@ coder template push smeuperp --directory smeuperp/
 | Change | Stop/start enough? |
 |--------|-------------------|
 | Jardis extension version | Yes |
-| `jardis_host` / `jardis_port` / `jardis_env` locals in `main.tf` | Push template, then delete `~/smeuperp/smeuperp.code-workspace` and stop/start |
+| ibmi-languages extension | Yes (reinstalled on every start) |
+| `jardis_host` / `jardis_port` / `jardis_env` locals in `main.tf` | Push template, then stop/start |
 | `users_workspace_path` local in `main.tf` | No — destroy and recreate (also restart docker-compose) |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
