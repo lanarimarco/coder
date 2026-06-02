@@ -72,6 +72,9 @@ resource "coder_agent" "main" {
       echo "jardis extension up to date, skipping."
     fi
 
+    # Install ibmi-languages extension from Open VSX
+    /tmp/code-server/bin/code-server --install-extension barrettotte.ibmi-languages
+
     # Clone smeup libs into the user-scoped bind mount.
     # On the host this maps to $USERS_WORKSPACE_PATH/<username>/libs — other users' dirs are not visible.
     # ~/smeuperp/libs is a symlink so code-server sees the usual path.
