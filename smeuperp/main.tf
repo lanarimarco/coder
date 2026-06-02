@@ -10,7 +10,11 @@ terraform {
 }
 
 locals {
-  username = data.coder_workspace_owner.me.name
+  username             = data.coder_workspace_owner.me.name
+  jardis_host          = "localhost"
+  jardis_port          = 9091
+  jardis_env           = "smeuperp"
+  users_workspace_path = "/home/kokos/users-workspace"
 }
 
 data "coder_provisioner" "me" {}
@@ -27,12 +31,6 @@ data "coder_external_auth" "github" {
   id = "github"
 }
 
-
-variable "users_workspace_path" {
-  type        = string
-  description = "Host base directory under which per-user subdirs are bind-mounted into workspaces. Set via USERS_WORKSPACE_PATH in the server environment."
-  default     = "/home/kokos/users-workspace"
-}
 
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
@@ -101,10 +99,6 @@ resource "coder_agent" "main" {
       fi
     done
 
-    # Load jardis config written by Terraform provisioner at workspace creation
-    . "$USERS_WORKSPACE_PATH/.jardis.env" 2>/dev/null || true
-    JARDIS_PORT="$${JARDIS_PORT:-0}"
-
     # Create VS Code multi-root workspace file only on first start; user edits are preserved
     WORKSPACE_FILE="$HOME/smeuperp/smeuperp.code-workspace"
     if [ ! -f "$WORKSPACE_FILE" ]; then
@@ -118,9 +112,9 @@ resource "coder_agent" "main" {
     ],
     "settings": {
         "jardis.user": "$USER",
-        "jardis.host": "$JARDIS_HOST",
-        "jardis.port": $JARDIS_PORT,
-        "jardis.env": "smeuperp"
+        "jardis.host": "${local.jardis_host}",
+        "jardis.port": ${local.jardis_port},
+        "jardis.env": "${local.jardis_env}"
     }
 }
 WORKSPACE
@@ -131,12 +125,12 @@ WORKSPACE
   EOT
 
   env = {
-    GIT_AUTHOR_NAME     = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
-    GIT_AUTHOR_EMAIL    = data.coder_workspace_owner.me.email
-    GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
-    GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
-    GITHUB_TOKEN        = data.coder_external_auth.github.access_token
-    USERS_WORKSPACE_PATH = var.users_workspace_path
+    GIT_AUTHOR_NAME      = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
+    GIT_AUTHOR_EMAIL     = data.coder_workspace_owner.me.email
+    GIT_COMMITTER_NAME   = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
+    GIT_COMMITTER_EMAIL  = data.coder_workspace_owner.me.email
+    GITHUB_TOKEN         = data.coder_external_auth.github.access_token
+    USERS_WORKSPACE_PATH = local.users_workspace_path
   }
 
   metadata {
@@ -194,21 +188,8 @@ resource "docker_image" "main" {
   }
 }
 
-resource "null_resource" "jardis_config" {
-  count = data.coder_workspace.me.start_count
-
-  triggers = {
-    workspace_id = data.coder_workspace.me.id
-  }
-
-  provisioner "local-exec" {
-    command = "mkdir -p /opt/coder-workspaces/${local.username}/libs && printf 'JARDIS_HOST=%s\\nJARDIS_PORT=%s\\n' \"$TF_VAR_jardis_host\" \"$TF_VAR_jardis_port\" > /opt/coder-workspaces/${local.username}/libs/.jardis.env"
-  }
-}
-
 resource "docker_container" "workspace" {
-  count      = data.coder_workspace.me.start_count
-  depends_on = [null_resource.jardis_config]
+  count = data.coder_workspace.me.start_count
   image    = docker_image.main.name
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = data.coder_workspace.me.name
@@ -226,8 +207,8 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
   volumes {
-    container_path = var.users_workspace_path
-    host_path      = "${var.users_workspace_path}/${local.username}/libs"
+    container_path = local.users_workspace_path
+    host_path      = "${local.users_workspace_path}/${local.username}/libs"
     read_only      = false
   }
 }

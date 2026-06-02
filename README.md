@@ -17,7 +17,7 @@ smeuperp/                # Workspace template for smeuperp developers
 
 ### 1. Prepare the host
 
-Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path defaults to `/home/kokos/users-workspace` and can be overridden with `USERS_WORKSPACE_PATH` in your `.env`.
+Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path is set via `users_workspace_path` in the `locals` block of `smeuperp/main.tf` (default: `/home/kokos/users-workspace`).
 
 ```bash
 sudo mkdir -p /home/kokos/users-workspace
@@ -35,7 +35,7 @@ sudo chmod 777 /home/kokos/users-workspace
 cp .env.template .env
 ```
 
-Fill in `.env` with the GitHub OAuth App credentials and the Jardis service coordinates (see sections below).
+Fill in `.env` with the GitHub OAuth App credentials (see section below).
 
 ### 3. Start the stack
 
@@ -72,7 +72,7 @@ When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>
 
 ### Mounting libs in an external container
 
-Replace `$USERS_WORKSPACE_PATH` with the actual value from your `.env` (default `/home/kokos/users-workspace`):
+Replace `$USERS_WORKSPACE_PATH` with the value of `users_workspace_path` from `smeuperp/main.tf` (default `/home/kokos/users-workspace`):
 
 ```yaml
 services:
@@ -92,27 +92,36 @@ Everything else (shell history, editor config, uncommitted files outside libs) l
 
 ## Jardis service configuration
 
-The Jardis host and port are written into the `smeuperp.code-workspace` VS Code settings automatically on each workspace start.
+The Jardis host and port are written into the `smeuperp.code-workspace` VS Code settings automatically on first workspace start.
 
-Set them in `.env`:
+Edit the values directly in the `locals` block of `smeuperp/main.tf`:
 
-```env
-JARDIS_HOST=your_jardis_host_here
-JARDIS_PORT=your_jardis_port_here
+```hcl
+locals {
+  jardis_host = "localhost"   # ← change this
+  jardis_port = 9091          # ← change this
+  jardis_env  = "smeuperp"   # ← change this
+}
 ```
 
-These values flow from `.env` → `docker-compose.yml` (as `TF_VAR_jardis_host` / `TF_VAR_jardis_port`) → Coder's Terraform provisioner, which writes a `.jardis.env` file into the user's workspace directory at workspace creation time. The startup script sources this file and writes it into `smeuperp.code-workspace`:
+Then push the template:
+
+```bash
+coder template push smeuperp --directory smeuperp/
+```
+
+The values are baked into the startup script at provisioning time and written into `smeuperp.code-workspace` on first workspace start:
 
 ```json
 "settings": {
     "jardis.user": "<coder-username>",
-    "jardis.host": "<JARDIS_HOST>",
-    "jardis.port": <JARDIS_PORT>,
-    "jardis.env": "smeuperp"
+    "jardis.host": "<jardis_host>",
+    "jardis.port": <jardis_port>,
+    "jardis.env": "<jardis_env>"
 }
 ```
 
-The workspace file is created once on first start from the values in `.jardis.env` and is not overwritten on subsequent starts, so user edits are preserved. The `.jardis.env` file itself is only (re)written when the workspace is created, so changing `.env` values requires destroying and recreating the workspace.
+The workspace file is created once on first start and not overwritten on subsequent starts, so user edits are preserved. After changing the locals and pushing the template, destroy and recreate the workspace (or delete `~/smeuperp/smeuperp.code-workspace` manually and stop/start).
 
 ---
 
@@ -164,8 +173,8 @@ coder template push smeuperp --directory smeuperp/
 | Change | Stop/start enough? |
 |--------|-------------------|
 | Jardis extension version | Yes |
-| `JARDIS_HOST` / `JARDIS_PORT` in `.env` | No — destroy and recreate |
-| `USERS_WORKSPACE_PATH` in `.env` | No — destroy and recreate (also restart docker-compose) |
+| `jardis_host` / `jardis_port` / `jardis_env` locals in `main.tf` | Push template, then delete `~/smeuperp/smeuperp.code-workspace` and stop/start |
+| `users_workspace_path` local in `main.tf` | No — destroy and recreate (also restart docker-compose) |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
 

@@ -33,15 +33,9 @@ services:
       CODER_EXTERNAL_AUTH_0_CLIENT_ID: "${GITHUB_EXTERNAL_AUTH_CLIENT_ID}"
       CODER_EXTERNAL_AUTH_0_CLIENT_SECRET: "${GITHUB_EXTERNAL_AUTH_CLIENT_SECRET}"
       CODER_EXTERNAL_AUTH_0_SCOPES: "repo read:user user:email"
-      # Terraform variables passed to all workspace templates
-      TF_VAR_jardis_host: "${JARDIS_HOST}"
-      TF_VAR_jardis_port: "${JARDIS_PORT}"
-      TF_VAR_users_workspace_path: "${USERS_WORKSPACE_PATH}"
     volumes:
       # CRITICAL: This gives the Coder container permission to talk to the host's Docker
       - /var/run/docker.sock:/var/run/docker.sock
-      # Allows Terraform local-exec provisioner to write per-user jardis config files
-      - ${USERS_WORKSPACE_PATH}:/opt/coder-workspaces
     depends_on:
       - coder-db
     restart: unless-stopped
