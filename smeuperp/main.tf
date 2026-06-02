@@ -99,6 +99,33 @@ resource "coder_agent" "main" {
       fi
     done
 
+    # Inject jardis settings into code-server user settings (applied to all workspaces).
+    # Runs on every start so admin changes to host/port take effect without destroying the workspace.
+    CODER_SETTINGS_DIR="$HOME/.local/share/code-server/User"
+    mkdir -p "$CODER_SETTINGS_DIR"
+    python3 - "$CODER_SETTINGS_DIR/settings.json" <<'PYSCRIPT'
+import json, sys, os
+
+path = sys.argv[1]
+settings = {}
+if os.path.exists(path):
+    with open(path) as f:
+        try:
+            settings = json.load(f)
+        except json.JSONDecodeError:
+            pass
+
+settings.update({
+    "jardis.user": os.environ["USER"],
+    "jardis.host": "${local.jardis_host}",
+    "jardis.port": ${local.jardis_port},
+    "jardis.env": "${local.jardis_env}"
+})
+
+with open(path, "w") as f:
+    json.dump(settings, f, indent=4)
+PYSCRIPT
+
     # Create VS Code multi-root workspace file only on first start; user edits are preserved
     WORKSPACE_FILE="$HOME/smeuperp/smeuperp.code-workspace"
     if [ ! -f "$WORKSPACE_FILE" ]; then
@@ -109,13 +136,7 @@ resource "coder_agent" "main" {
         { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-custom" },
         { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-persup" },
         { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-smeupdem" }
-    ],
-    "settings": {
-        "jardis.user": "$USER",
-        "jardis.host": "${local.jardis_host}",
-        "jardis.port": ${local.jardis_port},
-        "jardis.env": "${local.jardis_env}"
-    }
+    ]
 }
 WORKSPACE
     fi
