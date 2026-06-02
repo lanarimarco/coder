@@ -66,7 +66,7 @@ The `smeuperp.code-workspace` file is generated on first start with your connect
     "jardis.user": "<your-coder-username>",
     "jardis.host": "<configured-by-admin>",
     "jardis.port": <configured-by-admin>,
-    "jardis.env": "smeuperp"
+    "jardis.env": "smeuperp-user"
 }
 ```
 

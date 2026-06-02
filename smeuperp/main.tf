@@ -78,7 +78,7 @@ resource "coder_agent" "main" {
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
     mkdir -p "$HOME/smeuperp"
-    LIBS_DIR="$USERS_WORKSPACE_PATH"
+    LIBS_DIR="$USERS_WORKSPACE_PATH/$USER/libs"
     REPOS=(
       "kokos-dsl-smeuperp"
       "kokos-dsl-smeuperp-custom"
@@ -105,10 +105,10 @@ resource "coder_agent" "main" {
     cat > "$WORKSPACE_FILE" <<WORKSPACE
 {
     "folders": [
-        { "path": "libs/kokos-dsl-smeuperp" },
-        { "path": "libs/kokos-dsl-smeuperp-custom" },
-        { "path": "libs/kokos-dsl-smeuperp-persup" },
-        { "path": "libs/kokos-dsl-smeuperp-smeupdem" }
+        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp" },
+        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-custom" },
+        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-persup" },
+        { "path": "${local.users_workspace_path}/$USER/libs/kokos-dsl-smeuperp-smeupdem" }
     ],
     "settings": {
         "jardis.user": "$USER",
@@ -207,7 +207,7 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
   volumes {
-    container_path = local.users_workspace_path
+    container_path = "${local.users_workspace_path}/${local.username}/libs"
     host_path      = "${local.users_workspace_path}/${local.username}/libs"
     read_only      = false
   }

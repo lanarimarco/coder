@@ -64,7 +64,7 @@ This is a key aspect of the setup.
 
 ### `~/smeuperp/libs` — the per-user libs directory
 
-When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/libs/`). Inside the container, `$USERS_WORKSPACE_PATH` is bind-mounted to that user-specific libs subdirectory only — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH`.
+When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/libs/`). Inside the container, only `$USERS_WORKSPACE_PATH/<username>/libs` is bind-mounted — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH/<username>/libs`.
 
 - **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/libs/` (e.g. `/home/kokos/users-workspace/admin/libs/`)
 - **From an external container**: mount `$USERS_WORKSPACE_PATH` to access all users' repos, each under their own subdirectory
@@ -100,7 +100,7 @@ Edit the values directly in the `locals` block of `smeuperp/main.tf`:
 locals {
   jardis_host = "localhost"   # ← change this
   jardis_port = 9091          # ← change this
-  jardis_env  = "smeuperp"   # ← change this
+  jardis_env  = "smeuperp-user"   # ← change this
 }
 ```
 
