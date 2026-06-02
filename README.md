@@ -5,19 +5,25 @@ Self-hosted [Coder](https://coder.com) instance for SMEUP ERP development, runni
 ## Architecture
 
 ```
-docker-compose.yml       # Coder server + PostgreSQL
-.env                     # Secrets (gitignored — see .env.template)
-smeuperp/                # Workspace template for smeuperp developers
-  main.tf                # Terraform template
-  build/
-    Dockerfile
+docker-compose.yml          # Coder server + PostgreSQL
+.env                        # Secrets (gitignored — see .env.template)
+push-template.sh            # Helper to push any template (dereferences symlinks)
+modules/
+  jardis-workspace/         # Shared Terraform module — all workspace logic lives here
+    main.tf
+    variables.tf
+    build/
+      Dockerfile
+smeuperp/                   # Workspace template for smeuperp developers
+  main.tf                   # Thin caller: providers + module block with smeuperp values
+  modules -> ../modules     # Symlink so terraform init resolves the module locally
 ```
 
 ## Server setup
 
 ### 1. Prepare the host
 
-Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path is set via `users_workspace_path` in the `locals` block of `smeuperp/main.tf` (default: `/home/kokos/users-workspace`).
+Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path is set via `users_workspace_path` in the `module "workspace"` block of `smeuperp/main.tf` (default: `/home/kokos/users-workspace`).
 
 ```bash
 sudo mkdir -p /home/kokos/users-workspace
@@ -72,7 +78,7 @@ When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>
 
 ### Mounting libs in an external container
 
-Replace `$USERS_WORKSPACE_PATH` with the value of `users_workspace_path` from `smeuperp/main.tf` (default `/home/kokos/users-workspace`):
+Replace `$USERS_WORKSPACE_PATH` with the value of `users_workspace_path` in the `module "workspace"` block of `smeuperp/main.tf` (default `/home/kokos/users-workspace`):
 
 ```yaml
 services:
@@ -94,20 +100,23 @@ Everything else (shell history, editor config, uncommitted files outside libs) l
 
 The Jardis host, port, and environment are injected into the code-server user settings (`~/.local/share/code-server/User/settings.json`) on **every** workspace start, so they always reflect the current template values.
 
-Edit the values directly in the `locals` block of `smeuperp/main.tf`:
+Edit the values in the `module "workspace"` block of `smeuperp/main.tf`:
 
 ```hcl
-locals {
-  jardis_host = "localhost"   # ← change this
-  jardis_port = 9091          # ← change this
-  jardis_env  = "smeuperp-user"   # ← change this
+module "workspace" {
+  source = "./modules/jardis-workspace"
+
+  jardis_host = "localhost"       # ← change this
+  jardis_port = 9091              # ← change this
+  jardis_env  = "smeuperp-user"  # ← change this
+  ...
 }
 ```
 
 Then push the template:
 
 ```bash
-coder template push smeuperp --directory smeuperp/
+./push-template.sh smeuperp
 ```
 
 On the next workspace start, the startup script merges these values into the user settings file:
@@ -165,8 +174,10 @@ coder login http://localhost:7080
 ### Push a new version
 
 ```bash
-coder template push smeuperp --directory smeuperp/
+./push-template.sh smeuperp
 ```
+
+> The script uses `cp -rL` to dereference the `smeuperp/modules` symlink before uploading, because Coder's provisioner does not follow symlinks.
 
 ### What requires workspace destroy vs. stop/start
 
@@ -174,14 +185,14 @@ coder template push smeuperp --directory smeuperp/
 |--------|-------------------|
 | Jardis extension version | Yes |
 | ibmi-languages extension | Yes (reinstalled on every start) |
-| `jardis_host` / `jardis_port` / `jardis_env` locals in `main.tf` | Push template, then stop/start |
-| `users_workspace_path` local in `main.tf` | No — destroy and recreate (also restart docker-compose) |
+| `jardis_host` / `jardis_port` / `jardis_env` in `smeuperp/main.tf` | Push template, then stop/start |
+| `users_workspace_path` in `smeuperp/main.tf` | No — destroy and recreate (also restart docker-compose) |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
 
 ### Updating the jardis extension
 
-Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `smeuperp/main.tf`, then push the template. Existing workspaces pick up the new version on next start.
+Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `modules/jardis-workspace/main.tf`, then push the template. Existing workspaces pick up the new version on next start.
 
 ### Repos cloned into workspaces
 
@@ -194,7 +205,7 @@ kokos-dsl-smeuperp-persup
 kokos-dsl-smeuperp-smeupdem
 ```
 
-To add or remove repos, edit the `REPOS` array in the `startup_script` inside `smeuperp/main.tf` and push the template. Already-cloned repos in existing workspaces are not affected.
+To add or remove repos, edit the `repos` list in the `module "workspace"` block of `smeuperp/main.tf` and push the template. Already-cloned repos in existing workspaces are not affected.
 
 ---
 

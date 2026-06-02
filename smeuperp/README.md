@@ -52,7 +52,7 @@ Before destroying, make sure to **commit and push** any work you want to keep.
 
 When the template admin pushes a new version, your workspace shows an **Update** button. Applying an update:
 
-- Rebuilds the Docker image if `build/` changed (e.g. a new bundled extension).
+- Rebuilds the Docker image if `modules/jardis-workspace/build/` changed (e.g. a new bundled extension).
 - **Does not delete your home volume** — your files and repos are preserved.
 - Restarts the workspace so the new image takes effect.
 
