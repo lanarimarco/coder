@@ -36,6 +36,14 @@ resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
 
+  display_apps {
+    vscode         = false
+    vscode_insiders = false
+    ssh_helper     = false
+    port_forwarding_helper = false
+    web_terminal   = true
+  }
+
   startup_script = <<-EOT
     set -e
 
