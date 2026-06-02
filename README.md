@@ -17,15 +17,15 @@ smeuperp/                # Workspace template for smeuperp developers
 
 ### 1. Prepare the host
 
-Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here.
+Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path defaults to `/home/kokos/users-workspace` and can be overridden with `USERS_WORKSPACE_PATH` in your `.env`.
 
 ```bash
-sudo mkdir -p /opt/smeuperp-libs
-sudo chmod 777 /opt/smeuperp-libs
+sudo mkdir -p /home/kokos/users-workspace
+sudo chmod 777 /home/kokos/users-workspace
 ```
 
-> **macOS / Docker Desktop only:** Docker Desktop restricts which host paths can be bind-mounted into containers. Add `/opt/smeuperp-libs` to the allowed list before starting workspaces:
-> **Docker Desktop → Settings → Resources → File Sharing → add `/opt/smeuperp-libs` → Apply & Restart**
+> **macOS / Docker Desktop only:** Docker Desktop restricts which host paths can be bind-mounted into containers. Add the base directory (e.g. `/home/kokos/users-workspace`) to the allowed list before starting workspaces:
+> **Docker Desktop → Settings → Resources → File Sharing → add the path → Apply & Restart**
 >
 > On Linux this restriction does not exist.
 
@@ -64,20 +64,22 @@ This is a key aspect of the setup.
 
 ### `~/smeuperp/libs` — the per-user libs directory
 
-When a workspace starts, repos are cloned into `/opt/smeuperp-libs/<username>/` on the **host filesystem**. Inside the container, `/opt/smeuperp-libs` is bind-mounted to that user-specific subdirectory only — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `/opt/smeuperp-libs`.
+When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/`). Inside the container, `$USERS_WORKSPACE_PATH` is bind-mounted to that user-specific subdirectory only — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH`.
 
-- **From the host**: files are at `/opt/smeuperp-libs/<username>/`
-- **From an external container**: mount `/opt/smeuperp-libs` to access all users' repos, each under their own subdirectory
+- **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/` (e.g. `/home/kokos/users-workspace/admin/`)
+- **From an external container**: mount `$USERS_WORKSPACE_PATH` to access all users' repos, each under their own subdirectory
 - **Survives workspace destruction**: the files live on the host, not in the home Docker volume. Recreating the workspace skips cloning since the repos are already there
 
 ### Mounting libs in an external container
+
+Replace `$USERS_WORKSPACE_PATH` with the actual value from your `.env` (default `/home/kokos/users-workspace`):
 
 ```yaml
 services:
   myapp:
     image: myapp:latest
     volumes:
-      - /opt/smeuperp-libs:/smeuperp-libs:ro
+      - /home/kokos/users-workspace:/smeuperp-libs:ro
 ```
 
 Each user's repos are then at `/smeuperp-libs/<coder-username>/kokos-dsl-smeuperp` etc.
@@ -90,7 +92,7 @@ Everything else (shell history, editor config, uncommitted files outside libs) l
 
 ## Jardis service configuration
 
-The Jardis host and port are injected into every workspace as environment variables and written into the `smeuperp.code-workspace` VS Code settings automatically.
+The Jardis host and port are written into the `smeuperp.code-workspace` VS Code settings automatically on each workspace start.
 
 Set them in `.env`:
 
@@ -99,7 +101,7 @@ JARDIS_HOST=your_jardis_host_here
 JARDIS_PORT=your_jardis_port_here
 ```
 
-Inside each workspace they are available as `$JARDIS_HOST` and `$JARDIS_PORT`, and the `smeuperp.code-workspace` file is pre-populated with:
+These values flow from `.env` → `docker-compose.yml` (as `TF_VAR_jardis_host` / `TF_VAR_jardis_port`) → Coder's Terraform provisioner, which writes a `.jardis.env` file into the user's workspace directory at workspace creation time. The startup script sources this file and writes it into `smeuperp.code-workspace`:
 
 ```json
 "settings": {
@@ -110,7 +112,7 @@ Inside each workspace they are available as `$JARDIS_HOST` and `$JARDIS_PORT`, a
 }
 ```
 
-To change these values, update `.env` and restart Coder (`docker compose up -d`). Users must then destroy and recreate their workspace for the new values to take effect (the workspace file is only generated once on first start).
+The workspace file is created once on first start from the values in `.jardis.env` and is not overwritten on subsequent starts, so user edits are preserved. The `.jardis.env` file itself is only (re)written when the workspace is created, so changing `.env` values requires destroying and recreating the workspace.
 
 ---
 
@@ -139,6 +141,18 @@ The `smeup` org restricts third-party OAuth App access. Each app must be approve
 
 ## Managing the smeuperp template
 
+### Install the Coder CLI
+
+```bash
+curl -fsSL https://coder.com/install.sh | sh
+```
+
+Then log in against your Coder instance:
+
+```bash
+coder login http://localhost:7080
+```
+
 ### Push a new version
 
 ```bash
@@ -151,6 +165,7 @@ coder template push smeuperp --directory smeuperp/
 |--------|-------------------|
 | Jardis extension version | Yes |
 | `JARDIS_HOST` / `JARDIS_PORT` in `.env` | No — destroy and recreate |
+| `USERS_WORKSPACE_PATH` in `.env` | No — destroy and recreate (also restart docker-compose) |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
 
@@ -160,7 +175,7 @@ Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `smeuperp/main.tf`, then push the tem
 
 ### Repos cloned into workspaces
 
-On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `/opt/smeuperp-libs/<username>/` on the host):
+On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `$USERS_WORKSPACE_PATH/<username>/` on the host):
 
 ```
 kokos-dsl-smeuperp

@@ -27,16 +27,11 @@ data "coder_external_auth" "github" {
   id = "github"
 }
 
-variable "jardis_host" {
-  type        = string
-  description = "Hostname or IP of the Jardis service workspaces connect to. Set via TF_VAR_jardis_host in the server environment."
-  default     = ""
-}
 
-variable "jardis_port" {
-  type        = number
-  description = "Port of the Jardis service. Set via TF_VAR_jardis_port in the server environment."
-  default     = 0
+variable "users_workspace_path" {
+  type        = string
+  description = "Host base directory under which per-user subdirs are bind-mounted into workspaces. Set via USERS_WORKSPACE_PATH in the server environment."
+  default     = "/home/kokos/users-workspace"
 }
 
 resource "coder_agent" "main" {
@@ -79,13 +74,13 @@ resource "coder_agent" "main" {
       echo "jardis extension up to date, skipping."
     fi
 
-    # Clone smeup libs into the user-scoped bind mount at /opt/smeuperp-libs.
-    # On the host this maps to /opt/smeuperp-libs/<username> — other users' dirs are not visible.
+    # Clone smeup libs into the user-scoped bind mount.
+    # On the host this maps to $USERS_WORKSPACE_PATH/<username> — other users' dirs are not visible.
     # ~/smeuperp/libs is a symlink so code-server sees the usual path.
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
     mkdir -p "$HOME/smeuperp"
-    LIBS_DIR="/opt/smeuperp-libs"
+    LIBS_DIR="$USERS_WORKSPACE_PATH"
     REPOS=(
       "kokos-dsl-smeuperp"
       "kokos-dsl-smeuperp-custom"
@@ -93,6 +88,7 @@ resource "coder_agent" "main" {
       "kokos-dsl-smeuperp-smeupdem"
     )
     mkdir -p "$LIBS_DIR"
+    sudo chown "$(id -u):$(id -g)" "$LIBS_DIR"
     ln -sfn "$LIBS_DIR" "$HOME/smeuperp/libs"
     for NAME in "$${REPOS[@]}"; do
       DEST="$LIBS_DIR/$NAME"
@@ -105,10 +101,14 @@ resource "coder_agent" "main" {
       fi
     done
 
-    # Create VS Code multi-root workspace file
+    # Load jardis config written by Terraform provisioner at workspace creation
+    . "$USERS_WORKSPACE_PATH/.jardis.env" 2>/dev/null || true
+    JARDIS_PORT="$${JARDIS_PORT:-0}"
+
+    # Create VS Code multi-root workspace file only on first start; user edits are preserved
     WORKSPACE_FILE="$HOME/smeuperp/smeuperp.code-workspace"
     if [ ! -f "$WORKSPACE_FILE" ]; then
-      cat > "$WORKSPACE_FILE" <<WORKSPACE
+    cat > "$WORKSPACE_FILE" <<WORKSPACE
 {
     "folders": [
         { "path": "libs/kokos-dsl-smeuperp" },
@@ -136,8 +136,7 @@ WORKSPACE
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
     GITHUB_TOKEN        = data.coder_external_auth.github.access_token
-    JARDIS_HOST         = var.jardis_host
-    JARDIS_PORT         = var.jardis_port
+    USERS_WORKSPACE_PATH = var.users_workspace_path
   }
 
   metadata {
@@ -195,8 +194,21 @@ resource "docker_image" "main" {
   }
 }
 
+resource "null_resource" "jardis_config" {
+  count = data.coder_workspace.me.start_count
+
+  triggers = {
+    workspace_id = data.coder_workspace.me.id
+  }
+
+  provisioner "local-exec" {
+    command = "mkdir -p /opt/coder-workspaces/${local.username} && printf 'JARDIS_HOST=%s\\nJARDIS_PORT=%s\\n' \"$TF_VAR_jardis_host\" \"$TF_VAR_jardis_port\" > /opt/coder-workspaces/${local.username}/.jardis.env"
+  }
+}
+
 resource "docker_container" "workspace" {
-  count    = data.coder_workspace.me.start_count
+  count      = data.coder_workspace.me.start_count
+  depends_on = [null_resource.jardis_config]
   image    = docker_image.main.name
   name     = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   hostname = data.coder_workspace.me.name
@@ -214,8 +226,8 @@ resource "docker_container" "workspace" {
     read_only      = false
   }
   volumes {
-    container_path = "/opt/smeuperp-libs"
-    host_path      = "/opt/smeuperp-libs/${local.username}"
+    container_path = var.users_workspace_path
+    host_path      = "${var.users_workspace_path}/${local.username}"
     read_only      = false
   }
 }
