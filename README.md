@@ -1,6 +1,6 @@
-# Coder – smeuperp infrastructure
+# Coder – jardis workspace infrastructure
 
-Self-hosted [Coder](https://coder.com) instance for SMEUP ERP development, running on Docker Compose.
+Self-hosted [Coder](https://coder.com) instance for jardis-based development workspaces, running on Docker Compose.
 
 ## Architecture
 
@@ -8,29 +8,32 @@ Self-hosted [Coder](https://coder.com) instance for SMEUP ERP development, runni
 docker-compose.yml          # Coder server + PostgreSQL
 .env                        # Secrets (gitignored — see .env.template)
 push-template.sh            # Helper to push any template (dereferences symlinks)
+new-template.sh             # Scaffold a new template directory
 modules/
   jardis-workspace/         # Shared Terraform module — all workspace logic lives here
     main.tf
     variables.tf
     build/
       Dockerfile
-smeuperp/                   # Workspace template for smeuperp developers
-  main.tf                   # Thin caller: providers + module block with smeuperp values
+<template-name>/            # One directory per workspace template
+  main.tf                   # Thin caller: providers + module block with template values
   modules -> ../modules     # Symlink so terraform init resolves the module locally
 ```
+
+All workspace logic (startup script, Docker image, code-server setup) lives in `modules/jardis-workspace/` and is reused by every template. Only the five values in the `module "workspace"` block differ between templates.
 
 ## Server setup
 
 ### 1. Prepare the host
 
-Create the shared libs directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path is set via `users_workspace_path` in the `module "workspace"` block of `smeuperp/main.tf` (default: `/home/kokos/users-workspace`).
+Create the shared workspace directory on the host. Each user's workspace will bind-mount its own subdirectory from here. The base path is set via `users_workspace_path` in the `module "workspace"` block of the template's `main.tf` (default: `/home/kokos/users-workspace`).
 
 ```bash
 sudo mkdir -p /home/kokos/users-workspace
 sudo chmod 777 /home/kokos/users-workspace
 ```
 
-> **macOS / Docker Desktop only:** Docker Desktop restricts which host paths can be bind-mounted into containers. Add the base directory (e.g. `/home/kokos/users-workspace`) to the allowed list before starting workspaces:
+> **macOS / Docker Desktop only:** Docker Desktop restricts which host paths can be bind-mounted into containers. Add the base directory to the allowed list before starting workspaces:
 > **Docker Desktop → Settings → Resources → File Sharing → add the path → Apply & Restart**
 >
 > On Linux this restriction does not exist.
@@ -59,36 +62,34 @@ Open `http://localhost:7080` and complete the initial setup wizard.
 
 ## How workspace files are exposed to other processes
 
-This is a key aspect of the setup.
-
 ### What lives where
 
 | Path | Visible to | Persists across workspace destroy? |
 |------|-----------|-----------------------------------|
 | `~/` (home volume) | workspace only | No |
-| `~/smeuperp/libs` | workspace + host | Yes |
+| `~/<template-name>/libs` | workspace + host | Yes |
 
-### `~/smeuperp/libs` — the per-user libs directory
+### `~/<template-name>/libs` — the per-user libs directory
 
-When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem** (e.g. `/home/kokos/users-workspace/admin/libs/`). Inside the container, only `$USERS_WORKSPACE_PATH/<username>/libs` is bind-mounted — other users' directories are never visible from within the workspace. `~/smeuperp/libs` is a symlink to `$USERS_WORKSPACE_PATH/<username>/libs`.
+When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem**. Inside the container, only `$USERS_WORKSPACE_PATH/<username>/libs` is bind-mounted — other users' directories are never visible from within the workspace. `~/<template-name>/libs` is a symlink to that host path.
 
-- **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/libs/` (e.g. `/home/kokos/users-workspace/admin/libs/`)
+- **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/libs/`
 - **From an external container**: mount `$USERS_WORKSPACE_PATH` to access all users' repos, each under their own subdirectory
 - **Survives workspace destruction**: the files live on the host, not in the home Docker volume. Recreating the workspace skips cloning since the repos are already there
 
 ### Mounting libs in an external container
 
-Replace `$USERS_WORKSPACE_PATH` with the value of `users_workspace_path` in the `module "workspace"` block of `smeuperp/main.tf` (default `/home/kokos/users-workspace`):
+Replace `$USERS_WORKSPACE_PATH` with the value of `users_workspace_path` in the template's `main.tf` (default `/home/kokos/users-workspace`):
 
 ```yaml
 services:
   myapp:
     image: myapp:latest
     volumes:
-      - /home/kokos/users-workspace:/smeuperp-libs:ro
+      - /home/kokos/users-workspace:/workspace-libs:ro
 ```
 
-Each user's repos are then at `/smeuperp-libs/<coder-username>/kokos-dsl-smeuperp` etc.
+Each user's repos are then at `/workspace-libs/<coder-username>/<repo-name>` etc.
 
 ### `~/` — the private home volume
 
@@ -100,7 +101,7 @@ Everything else (shell history, editor config, uncommitted files outside libs) l
 
 The Jardis host, port, and environment are injected into the code-server user settings (`~/.local/share/code-server/User/settings.json`) on **every** workspace start, so they always reflect the current template values.
 
-Edit the values in the `module "workspace"` block of `smeuperp/main.tf`:
+Edit the values in the `module "workspace"` block of `<template-name>/main.tf`:
 
 ```hcl
 module "workspace" {
@@ -108,7 +109,7 @@ module "workspace" {
 
   jardis_host = "localhost"       # ← change this
   jardis_port = 9091              # ← change this
-  jardis_env  = "smeuperp-user"  # ← change this
+  jardis_env  = "my-env-user"    # ← change this
   ...
 }
 ```
@@ -116,7 +117,7 @@ module "workspace" {
 Then push the template:
 
 ```bash
-./push-template.sh smeuperp
+./push-template.sh <template-name>
 ```
 
 On the next workspace start, the startup script merges these values into the user settings file:
@@ -157,9 +158,40 @@ The `smeup` org restricts third-party OAuth App access. Each app must be approve
 
 ---
 
-## Managing the smeuperp template
+## Managing templates
+
+### Creating a new template
+
+```bash
+./new-template.sh <template-name>
+```
+
+> `<template-name>` should match the kokos application name (e.g. `smeuperp`, `demo`).
+
+The script prompts for the required values and scaffolds a new template directory:
+
+```
+Creating template 'demo'
+
+jardis_host                              : 192.168.1.10
+jardis_port                              : 9091
+jardis_env           [demo-user]: 
+users_workspace_path [/home/kokos/users-workspace]: 
+
+Enter repo names one per line (empty line to finish):
+  repo: kokos-dsl-showcase
+  repo:
+
+Template 'demo' created:
+  demo/main.tf
+  demo/modules -> ../modules  (symlink)
+```
+
+Review the generated `<template-name>/main.tf`, then push with `./push-template.sh <template-name>`.
 
 ### Install the Coder CLI
+
+Skip this step if `coder` is already installed (`coder version` to check).
 
 ```bash
 curl -fsSL https://coder.com/install.sh | sh
@@ -171,13 +203,13 @@ Then log in against your Coder instance:
 coder login http://localhost:7080
 ```
 
-### Push a new version
+### Push a template version
 
 ```bash
-./push-template.sh smeuperp
+./push-template.sh <template-name>
 ```
 
-> The script uses `cp -rL` to dereference the `smeuperp/modules` symlink before uploading, because Coder's provisioner does not follow symlinks.
+> The script uses `cp -rL` to dereference the `<template-name>/modules` symlink before uploading, because Coder's provisioner does not follow symlinks.
 
 ### What requires workspace destroy vs. stop/start
 
@@ -185,27 +217,14 @@ coder login http://localhost:7080
 |--------|-------------------|
 | Jardis extension version | Yes |
 | ibmi-languages extension | Yes (reinstalled on every start) |
-| `jardis_host` / `jardis_port` / `jardis_env` in `smeuperp/main.tf` | Push template, then stop/start |
-| `users_workspace_path` in `smeuperp/main.tf` | No — destroy and recreate (also restart docker-compose) |
+| `jardis_host` / `jardis_port` / `jardis_env` in `main.tf` | Push template, then stop/start |
+| `users_workspace_path` in `main.tf` | No — destroy and recreate (also restart docker-compose) |
 | Bind mount path changes | No — destroy and recreate |
 | Repo list changes | Yes (new repos are cloned on next start) |
 
 ### Updating the jardis extension
 
 Edit `JARDIS_VERSION` and `JARDIS_VSIX` in `modules/jardis-workspace/main.tf`, then push the template. Existing workspaces pick up the new version on next start.
-
-### Repos cloned into workspaces
-
-On first start, the following private repos are cloned into `~/smeuperp/libs/` (backed by `$USERS_WORKSPACE_PATH/<username>/libs/` on the host):
-
-```
-kokos-dsl-smeuperp
-kokos-dsl-smeuperp-custom
-kokos-dsl-smeuperp-persup
-kokos-dsl-smeuperp-smeupdem
-```
-
-To add or remove repos, edit the `repos` list in the `module "workspace"` block of `smeuperp/main.tf` and push the template. Already-cloned repos in existing workspaces are not affected.
 
 ---
 
