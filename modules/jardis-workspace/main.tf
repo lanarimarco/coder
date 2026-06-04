@@ -140,24 +140,24 @@ PYSCRIPT
                 "type": "jardis",
                 "request": "attach",
                 "name": "Jardis attach",
-                "program": "$${file}",
-                "workspaceFolders": "$${command:jardis.workspaceFolders}",
-                "env": "$${config:jardis.env}",
-                "user": "$${config:jardis.user}",
-                "password": "$${config:jardis.password}",
-                "osUser": "$${command:jardis.osUser}",
-                "jobId": "$${command:jardis.getJobId}"
+                "program": "\$${file}",
+                "workspaceFolders": "\$${command:jardis.workspaceFolders}",
+                "env": "\$${config:jardis.env}",
+                "user": "\$${config:jardis.user}",
+                "password": "\$${config:jardis.password}",
+                "osUser": "\$${command:jardis.osUser}",
+                "jobId": "\$${command:jardis.getJobId}"
             },
             {
                 "type": "jardis",
                 "request": "launch",
                 "name": "Jardis run",
-                "program": "$${file}",
-                "workspaceFolders": "$${command:jardis.workspaceFolders}",
-                "env": "$${config:jardis.env}",
-                "user": "$${config:jardis.user}",
-                "password": "$${config:jardis.password}",
-                "osUser": "$${command:jardis.osUser}"
+                "program": "\$${file}",
+                "workspaceFolders": "\$${command:jardis.workspaceFolders}",
+                "env": "\$${config:jardis.env}",
+                "user": "\$${config:jardis.user}",
+                "password": "\$${config:jardis.password}",
+                "osUser": "\$${command:jardis.osUser}"
             }
         ]
     }
