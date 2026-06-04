@@ -132,7 +132,35 @@ PYSCRIPT
 {
     "folders": [
         ${join(",\n        ", [for r in var.repos : "{ \"path\": \"${var.users_workspace_path}/$USER/libs/${r}\" }"])}
-    ]
+    ],
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "type": "jardis",
+                "request": "attach",
+                "name": "Jardis attach",
+                "program": "$${file}",
+                "workspaceFolders": "$${command:jardis.workspaceFolders}",
+                "env": "$${config:jardis.env}",
+                "user": "$${config:jardis.user}",
+                "password": "$${config:jardis.password}",
+                "osUser": "$${command:jardis.osUser}",
+                "jobId": "$${command:jardis.getJobId}"
+            },
+            {
+                "type": "jardis",
+                "request": "launch",
+                "name": "Jardis run",
+                "program": "$${file}",
+                "workspaceFolders": "$${command:jardis.workspaceFolders}",
+                "env": "$${config:jardis.env}",
+                "user": "$${config:jardis.user}",
+                "password": "$${config:jardis.password}",
+                "osUser": "$${command:jardis.osUser}"
+            }
+        ]
+    }
 }
 WORKSPACE
     fi
