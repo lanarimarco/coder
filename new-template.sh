@@ -7,6 +7,16 @@
 # <template-name> should match the kokos application name (e.g. smeuperp, demo).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=.env
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  # Export only the DEFAULT_* vars we care about, ignore the rest
+  set -a
+  # shellcheck disable=SC1090
+  source <(grep -E '^DEFAULT_(JARDIS_HOST|JARDIS_PORT|USERS_WORKSPACE_PATH)=' "$SCRIPT_DIR/.env")
+  set +a
+fi
+
 TEMPLATE=${1:?Usage: $0 <template-name>}
 
 if [ -d "$TEMPLATE" ]; then
@@ -18,10 +28,18 @@ echo "Creating template '$TEMPLATE'"
 echo ""
 
 DEFAULT_ENV="${TEMPLATE}-user"
-DEFAULT_PATH="/home/kokos/users-workspace"
+DEFAULT_PATH="${DEFAULT_USERS_WORKSPACE_PATH:-/home/kokos/users-workspace}"
 
-read -rp "jardis_host                              : " JARDIS_HOST
-read -rp "jardis_port                              : " JARDIS_PORT
+HOST_PROMPT="jardis_host"
+[ -n "${DEFAULT_JARDIS_HOST:-}" ] && HOST_PROMPT+=" [${DEFAULT_JARDIS_HOST}]"
+read -rp "${HOST_PROMPT}: " JARDIS_HOST
+JARDIS_HOST="${JARDIS_HOST:-${DEFAULT_JARDIS_HOST:-}}"
+
+PORT_PROMPT="jardis_port"
+[ -n "${DEFAULT_JARDIS_PORT:-}" ] && PORT_PROMPT+=" [${DEFAULT_JARDIS_PORT}]"
+read -rp "${PORT_PROMPT}: " JARDIS_PORT
+JARDIS_PORT="${JARDIS_PORT:-${DEFAULT_JARDIS_PORT:-}}"
+
 read -rp "jardis_env           [${DEFAULT_ENV}]: " JARDIS_ENV
 JARDIS_ENV="${JARDIS_ENV:-$DEFAULT_ENV}"
 read -rp "users_workspace_path [${DEFAULT_PATH}]: " USERS_WORKSPACE_PATH

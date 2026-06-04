@@ -46,6 +46,14 @@ cp .env.template .env
 
 Fill in `.env` with the GitHub OAuth App credentials (see section below).
 
+You can also set the following optional defaults that `new-template.sh` will read when scaffolding new templates:
+
+| Variable | Purpose |
+|----------|---------|
+| `DEFAULT_JARDIS_HOST` | Pre-fills the `jardis_host` prompt |
+| `DEFAULT_JARDIS_PORT` | Pre-fills the `jardis_port` prompt |
+| `DEFAULT_USERS_WORKSPACE_PATH` | Pre-fills the `users_workspace_path` prompt |
+
 ### 3. Start the stack
 
 ```bash
@@ -168,13 +176,13 @@ The `smeup` org restricts third-party OAuth App access. Each app must be approve
 
 > `<template-name>` should match the kokos application name (e.g. `smeuperp`, `demo`).
 
-The script prompts for the required values and scaffolds a new template directory:
+The script prompts for the required values and scaffolds a new template directory. If `DEFAULT_JARDIS_HOST`, `DEFAULT_JARDIS_PORT`, or `DEFAULT_USERS_WORKSPACE_PATH` are set in `.env`, they appear as defaults in the prompts (press Enter to accept):
 
 ```
 Creating template 'demo'
 
-jardis_host                              : 192.168.1.10
-jardis_port                              : 9091
+jardis_host [192.168.1.10]: 
+jardis_port [9091]: 
 jardis_env           [demo-user]: 
 users_workspace_path [/home/kokos/users-workspace]: 
 
