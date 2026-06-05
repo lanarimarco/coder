@@ -82,7 +82,6 @@ module "workspace" {
   jardis_port          = $JARDIS_PORT
   jardis_env           = "$JARDIS_ENV"
   users_workspace_path = "$USERS_WORKSPACE_PATH"
-  workspace_dir        = "$TEMPLATE"
   repos = [
 $(for REPO in "${REPOS[@]}"; do echo "    \"$REPO\","; done)
   ]

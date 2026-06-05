@@ -17,8 +17,3 @@ variable "users_workspace_path" {
 variable "repos" {
   type = list(string)
 }
-
-variable "workspace_dir" {
-  type    = string
-  default = "smeuperp"
-}

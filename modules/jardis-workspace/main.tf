@@ -76,17 +76,17 @@ resource "coder_agent" "main" {
 
     # Clone smeup libs into the user-scoped bind mount.
     # On the host this maps to $USERS_WORKSPACE_PATH/<username>/libs — other users' dirs are not visible.
-    # ~/workspace_dir/libs is a symlink so code-server sees the usual path.
+    # ~/<workspace-name>/libs is a symlink so code-server sees the usual path.
     # Token is embedded in the URL to bypass Coder's GIT_ASKPASS interceptor,
     # then immediately stripped from the remote so it never persists in .git/config
-    mkdir -p "$HOME/${var.workspace_dir}"
+    mkdir -p "$HOME/${data.coder_workspace.me.name}"
     LIBS_DIR="$USERS_WORKSPACE_PATH/$USER/libs"
     REPOS=(
       ${join("\n      ", [for r in var.repos : "\"${r}\""])}
     )
     mkdir -p "$LIBS_DIR"
     sudo chown "$(id -u):$(id -g)" "$LIBS_DIR"
-    ln -sfn "$LIBS_DIR" "$HOME/${var.workspace_dir}/libs"
+    ln -sfn "$LIBS_DIR" "$HOME/${data.coder_workspace.me.name}/libs"
     for NAME in "$${REPOS[@]}"; do
       DEST="$LIBS_DIR/$NAME"
       if [ ! -d "$DEST/.git" ]; then
@@ -126,7 +126,7 @@ with open(path, "w") as f:
 PYSCRIPT
 
     # Create VS Code multi-root workspace file only on first start; user edits are preserved
-    WORKSPACE_FILE="$HOME/${var.workspace_dir}/${var.workspace_dir}.code-workspace"
+    WORKSPACE_FILE="$HOME/${data.coder_workspace.me.name}.code-workspace"
     if [ ! -f "$WORKSPACE_FILE" ]; then
     cat > "$WORKSPACE_FILE" <<WORKSPACE
 {
@@ -199,7 +199,7 @@ resource "coder_app" "code-server" {
   agent_id     = coder_agent.main.id
   slug         = "code-server"
   display_name = "code-server"
-  url          = "http://localhost:13337/?workspace=/home/${local.username}/${var.workspace_dir}/${var.workspace_dir}.code-workspace"
+  url          = "http://localhost:13337/?workspace=/home/${local.username}/${data.coder_workspace.me.name}.code-workspace"
   icon         = "/icon/code.svg"
   subdomain    = false
   share        = "owner"
