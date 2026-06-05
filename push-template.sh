@@ -12,5 +12,6 @@ TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 cp -rL "$TEMPLATE/." "$TMPDIR/"
+cp "$(dirname "$0")/modules/jardis-workspace/README.md" "$TMPDIR/README.md"
 
 coder template push "$TEMPLATE" --directory "$TMPDIR" "$@"

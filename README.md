@@ -75,11 +75,11 @@ Open `http://localhost:7080` and complete the initial setup wizard.
 | Path | Visible to | Persists across workspace destroy? |
 |------|-----------|-----------------------------------|
 | `~/` (home volume) | workspace only | No |
-| `~/<template-name>/libs` | workspace + host | Yes |
+| `~/<workspace-name>/libs` | workspace + host | Yes |
 
-### `~/<template-name>/libs` — the per-user libs directory
+### `~/<workspace-name>/libs` — the per-user libs directory
 
-When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem**. Inside the container, only `$USERS_WORKSPACE_PATH/<username>/libs` is bind-mounted — other users' directories are never visible from within the workspace. `~/<template-name>/libs` is a symlink to that host path.
+When a workspace starts, repos are cloned into `$USERS_WORKSPACE_PATH/<username>/libs/` on the **host filesystem**. Inside the container, only `$USERS_WORKSPACE_PATH/<username>/libs` is bind-mounted — other users' directories are never visible from within the workspace. `~/<workspace-name>/libs` is a symlink to that host path, where `<workspace-name>` is the name the user chose when creating the Coder workspace.
 
 - **From the host**: files are at `$USERS_WORKSPACE_PATH/<username>/libs/`
 - **From an external container**: mount `$USERS_WORKSPACE_PATH` to access all users' repos, each under their own subdirectory
